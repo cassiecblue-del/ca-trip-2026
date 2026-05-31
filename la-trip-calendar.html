@@ -210,6 +210,61 @@
       .nbhd-body { flex-direction: column; }
       .nbhd-leg-col { width: 100%; border-left: none; border-top: 1px solid #f1f5f9; padding: 10px 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; }
     }
+
+    /* ── MOBILE ── */
+    @media (max-width: 640px) {
+      /* Nav */
+      .page-nav { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .page-nav .brand { font-size: 0.78rem; padding: 10px 10px 10px 0; }
+      .nav-tab { padding: 10px 12px; font-size: 0.76rem; }
+
+      /* Header */
+      header { padding: 14px 16px; }
+      header h1 { font-size: 1.15rem; }
+      header p { font-size: 0.8rem; }
+
+      /* Legend */
+      .legend { gap: 10px; padding: 8px 14px; }
+      .legend-item { font-size: 0.7rem; }
+
+      /* Calendar → single column, hide empty filler cells */
+      .cal-outer { padding: 10px 10px 100px; overflow-x: visible; }
+      .cal-inner { min-width: 0; }
+      .cal-col-headers { display: none; }
+      .cal-row { grid-template-columns: 1fr; gap: 6px; }
+      .cal-cell.empty { display: none; }
+      .cal-cell { min-height: auto; }
+      .cal-week { margin-bottom: 12px; }
+      .cal-week-label { font-size: 0.68rem; padding: 4px 2px 6px; border-bottom: 1px solid #ece8f4; margin-bottom: 6px; }
+      .cal-date-bar { padding: 6px 10px; }
+      .cal-date-num { font-size: 1.15rem; }
+      .cal-slots { padding: 6px 8px; gap: 5px; }
+      .cal-slot-lbl { font-size: 0.6rem; width: 28px; }
+      .cal-slot-txt, .cal-slot-input { font-size: 0.8rem; }
+      .cal-wf { padding: 0 8px 7px; }
+      .cal-wf input { font-size: 0.75rem; padding: 4px 8px; }
+
+      /* Modal → bottom sheet */
+      .modal-overlay { padding: 0; align-items: flex-end; }
+      .modal { border-radius: 20px 20px 0 0; max-width: 100%; padding: 22px 20px 36px; }
+      .modal h2 { font-size: 1.05rem; }
+
+      /* Food */
+      .food-section { padding: 14px 12px 100px; }
+      .food-section h2 { font-size: 1.1rem; }
+      .area-tabs { gap: 5px; }
+      .area-tab { padding: 5px 11px; font-size: 0.72rem; }
+      .food-grid { grid-template-columns: 1fr; }
+
+      /* Things to do */
+      .todo-section { padding: 14px 12px 100px; }
+      .todo-section h2 { font-size: 1.1rem; }
+      .todo-grid { grid-template-columns: 1fr; }
+
+      /* FABs */
+      .suggest-fab { right: 14px; bottom: 16px; padding: 10px 15px; font-size: 0.8rem; gap: 5px; }
+      .admin-toggle { left: 14px; bottom: 16px; width: 34px; height: 34px; }
+    }
   </style>
 </head>
 <body>
@@ -1197,7 +1252,7 @@
 
 
 <!-- ── SUGGEST FAB (calendar tab only) ── -->
-<button class="suggest-fab" id="suggestBtn" onclick="openModal()" style="display:none">
+<button class="suggest-fab" id="suggestBtn" onclick="openModal()" style="display:flex">
   ✨ Suggest something
 </button>
 
@@ -1248,7 +1303,9 @@
     document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
     document.getElementById('section-' + name).classList.add('active');
     btn.classList.add('active');
-    document.getElementById('suggestBtn').style.display = name === 'calendar' ? 'flex' : 'none';
+    const onCal = name === 'calendar';
+    document.getElementById('suggestBtn').style.display = onCal ? 'flex' : 'none';
+    document.getElementById('adminBtn').style.display   = onCal ? 'flex' : 'none';
   }
   function selectAreaFromMap(area) {
     const btn = document.querySelector('[data-area="' + area + '"]');
