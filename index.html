@@ -213,22 +213,6 @@
     .cal-day-note[readonly]::placeholder { color: transparent; }
     .cal-day-note:focus:not([readonly]) { border-bottom-color: var(--accent); }
 
-    /* Pending suggestions */
-    .cal-pending-item { display: flex; flex-direction: column; flex: 1; gap: 2px; }
-    .cal-pending-txt { font-size: 0.67rem; color: var(--ink-faint); font-style: italic; line-height: 1.35; }
-    .cal-pending-by { font-size: 0.6rem; color: var(--ink-faint); opacity: 0.7; }
-    .cal-pending-actions { display: flex; gap: 4px; margin-top: 2px; }
-    .btn-approve {
-      font-size: 0.57rem; padding: 2px 7px; border-radius: var(--radius-pill);
-      border: none; background: linear-gradient(135deg,var(--accent),var(--accent-2));
-      color: white; cursor: pointer; font-weight: 700;
-    }
-    .btn-reject {
-      font-size: 0.57rem; padding: 2px 7px; border-radius: var(--radius-pill);
-      border: 1px solid var(--line); background: var(--glass); color: var(--ink-soft);
-      cursor: pointer; font-weight: 700;
-    }
-
     /* Admin toggle */
     .admin-toggle {
       position: fixed; bottom: 20px; left: 20px; z-index: 200;
@@ -257,20 +241,6 @@
     }
     .cal-wf input::placeholder { color: var(--ink-faint); }
     .cal-wf input:focus { border-color: var(--c-blue); }
-
-    /* Suggestions panel */
-    #suggestions-panel {
-      display: none; margin: 12px 0 0;
-      background: var(--glass); border: 1px solid var(--hairline);
-      border-radius: var(--radius-sm); overflow: hidden; backdrop-filter: blur(16px);
-    }
-    #suggestions-panel.has-items { display: block; }
-    .panel-header {
-      padding: 10px 14px; font-weight: 700; font-size: 13px; color: var(--c-purple-deep);
-      background: color-mix(in srgb,var(--c-purple) 10%,transparent);
-    }
-    .suggestion-row { padding: 8px 14px; border-top: 1px solid var(--line); font-size: 13px; color: var(--ink); }
-    .suggestion-row .meta { color: var(--ink-faint); font-size: 11px; margin-bottom: 2px; }
 
     /* ── SUGGEST FAB ── */
     .suggest-fab {
@@ -1860,7 +1830,6 @@
 
 <!-- ── ADMIN TOGGLE (Cassie only) ── -->
 <button class="admin-toggle" id="adminBtn" onclick="toggleAdmin()" title="Cassie's edit mode">🔒</button>
-<div id="bakePanel" style="display:none;position:fixed;bottom:70px;left:14px;width:320px;max-height:280px;overflow-y:auto;background:white;border:1px solid #e2e8f0;border-radius:12px;padding:14px;box-shadow:0 8px 24px rgba(0,0,0,0.12);z-index:999;font-family:system-ui,sans-serif"></div>
 
 <!-- ── MODAL ── -->
 <div class="modal-overlay" id="modalOverlay" onclick="closeModalOnBg(event)">
@@ -1968,35 +1937,28 @@
   function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); }
   function closeModalOnBg(e) { if (e.target === document.getElementById('modalOverlay')) closeModal(); }
 
-  // ── Suggestions ──────────────────────────────────────
-  async function sendSuggestion() {
+  // ── Suggestions — email only ──────────────────────────
+  function sendSuggestion() {
     const name     = document.getElementById('suggestName').value.trim();
     const date     = document.getElementById('suggestDate').value;
     const time     = document.getElementById('suggestTime').value;
     const activity = document.getElementById('suggestActivity').value.trim();
     if (!name || !date || !time || !activity) { alert('Please fill in all fields!'); return; }
 
-    const btn = document.querySelector('.btn-suggest');
-    btn.textContent = 'Sending…'; btn.disabled = true;
-
-    const { error } = await db.from('suggestions').insert({ name, date, time, activity, status: 'pending' });
-    btn.textContent = 'Send Suggestion ✨'; btn.disabled = false;
-    if (error) { alert('Something went wrong — try again!'); console.error(error); return; }
-
-    // Email Cassie
-    const subj = encodeURIComponent('New CA trip suggestion from ' + name + '!');
-    const body = encodeURIComponent(name + ' suggested something for your California trip:\n\nDate: ' + date + '\nTime: ' + time + '\n\nWhat: ' + activity + '\n\nOpen your calendar to approve or skip it.');
-    window.open('mailto:cassiecblue@gmail.com?subject=' + subj + '&body=' + body);
+    const subj = encodeURIComponent('CA Trip idea from ' + name + '!');
+    const body = encodeURIComponent(
+      'Hey Cassie! ' + name + ' has a suggestion for your California trip:\n\n' +
+      '📅 Date: ' + date + '\n' +
+      '🕐 Time: ' + time + '\n' +
+      '✨ What: ' + activity + '\n\n' +
+      'Log in to add it: https://cassiecblue-del.github.io/ca-trip-2026/'
+    );
+    window.location.href = 'mailto:cassiecblue@gmail.com?subject=' + subj + '&body=' + body;
 
     ['suggestName','suggestDate','suggestTime','suggestActivity'].forEach(id => document.getElementById(id).value = '');
     closeModal();
+    alert('Thanks ' + name + '! Your suggestion has been sent to Cassie 🎉');
   }
-
-  // Real-time: refresh calendar when any suggestion changes
-  db.channel('suggestions-sync').on('postgres_changes',
-    { event: '*', schema: 'public', table: 'suggestions' },
-    () => renderCalendarSuggestions()
-  ).subscribe();
 
   // ── Day-of-week labels ────────────────────────────────
   function addDayLabels() {
@@ -2174,107 +2136,12 @@
     btn.classList.toggle('on', adminMode);
     btn.textContent = adminMode ? '🔓' : '🔒';
     setAllFieldsEditable(adminMode);
-    renderCalendarSuggestions();
   }
 
   function setAllFieldsEditable(editable) {
     document.querySelectorAll('.cal-slot-input, .cal-day-note, .cal-wf input').forEach(inp => {
       inp.readOnly = !editable;
     });
-    // Show/hide the bake panel
-    const panel = document.getElementById('bakePanel');
-    if (panel) panel.style.display = editable ? 'block' : 'none';
-    if (editable) refreshBakePanel();
-  }
-
-  async function refreshBakePanel() {
-    const panel = document.getElementById('bakePanel');
-    if (!panel) return;
-    const { data } = await db.from('notes').select('key, value').order('key');
-    if (!data || data.length === 0) { panel.innerHTML = '<div style="font-size:12px;color:#888;padding:8px">No saved notes yet.</div>'; return; }
-    panel.innerHTML = '<div style="font-size:11px;font-weight:700;letter-spacing:.05em;color:#888;margin-bottom:8px">SAVED NOTES (copy to bake into HTML)</div>' +
-      data.map(({key, value}) =>
-        `<div style="display:flex;gap:8px;align-items:center;margin-bottom:5px;font-size:12px">
-          <code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;color:#475569;flex-shrink:0">${key}</code>
-          <span style="color:#1e293b;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(value)}</span>
-        </div>`
-      ).join('');
-  }
-
-  // ── Suggestion helpers ────────────────────────────────
-  function escHtml(s) {
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  }
-
-  function suggKey(date, time) {
-    const m = /July (\d+)/.exec(date);
-    if (!m) return null;
-    const slotMap = { Morning: 'am', Afternoon: 'pm', Evening: 'eve' };
-    const slot = slotMap[time];
-    return slot ? 'cs-' + m[1] + '-' + slot : null;
-  }
-
-  // ── Pending suggestions on calendar ──────────────────
-  async function renderCalendarSuggestions() {
-    // Clear old pending items, restore hidden inputs
-    document.querySelectorAll('.cal-pending-item').forEach(item => {
-      const key = item.dataset.key;
-      if (key) {
-        const inp = document.querySelector('input.cal-slot-input[data-key="' + key + '"]');
-        if (inp) inp.style.display = '';
-      }
-      item.remove();
-    });
-
-    const { data } = await db.from('suggestions').select('*').eq('status', 'pending').order('created_at', { ascending: true });
-    if (!data) return;
-
-    data.forEach(s => {
-      const key = suggKey(s.date, s.time);
-      if (!key) return;
-      const input = document.querySelector('input.cal-slot-input[data-key="' + key + '"]');
-      if (!input) return;
-      input.style.display = 'none';
-
-      const item = document.createElement('div');
-      item.className = 'cal-pending-item';
-      item.dataset.sid = s.id;
-      item.dataset.key = key;
-      item.innerHTML =
-        '<span class="cal-pending-txt">💭 ' + escHtml(s.activity) + '</span>' +
-        '<span class="cal-pending-by">— ' + escHtml(s.name) + '</span>' +
-        (adminMode
-          ? '<div class="cal-pending-actions">' +
-            '<button class="btn-approve" onclick="approveSuggestion(this)">✓ Add</button>' +
-            '<button class="btn-reject" onclick="rejectSuggestion(this)">✕ Skip</button>' +
-            '</div>'
-          : '');
-      input.closest('.cal-slot').appendChild(item);
-    });
-  }
-
-  async function approveSuggestion(btn) {
-    btn.disabled = true;
-    const item = btn.closest('.cal-pending-item');
-    const sid  = item.dataset.sid;
-    const key  = item.dataset.key;
-    const text = item.querySelector('.cal-pending-txt').textContent.replace(/^💭 /, '').trim();
-    await db.from('notes').upsert({ key, value: text, updated_at: new Date().toISOString() });
-    await db.from('suggestions').update({ status: 'approved' }).eq('id', sid);
-    const input = document.querySelector('input.cal-slot-input[data-key="' + key + '"]');
-    if (input) { input.value = text; input.style.display = ''; }
-    item.remove();
-  }
-
-  async function rejectSuggestion(btn) {
-    btn.disabled = true;
-    const item = btn.closest('.cal-pending-item');
-    const sid  = item.dataset.sid;
-    const key  = item.dataset.key;
-    await db.from('suggestions').update({ status: 'rejected' }).eq('id', sid);
-    const input = document.querySelector('input.cal-slot-input[data-key="' + key + '"]');
-    if (input) input.style.display = '';
-    item.remove();
   }
 
   // ── Init ─────────────────────────────────────────────
@@ -2286,8 +2153,7 @@
     btn.textContent = '🔓';
     setAllFieldsEditable(true);
   }
-  // Load notes after inputs exist, then render suggestions after notes are in place
-  loadNotes().then(() => renderCalendarSuggestions());
+  loadNotes();
 </script>
 
 </body>
