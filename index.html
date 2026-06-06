@@ -197,9 +197,23 @@
       padding: 0 2px 1px; outline: none; min-width: 0; width: 100%; cursor: default;
     }
     .cal-slot-input[readonly]::placeholder { color: transparent; }
+    .cal-slot-input[readonly].has-value { cursor: pointer; text-decoration: underline dotted rgba(58,48,67,0.25); }
     .cal-slot-input:not([readonly]) { border-bottom-color: var(--line); cursor: text; }
     .cal-slot-input:not([readonly])::placeholder { color: var(--ink-faint); }
     .cal-slot-input:focus:not([readonly]) { border-bottom-color: var(--accent); }
+
+    /* Slot expand popover */
+    .slot-popover {
+      position: fixed; z-index: 500;
+      background: white; border: 1px solid var(--hairline);
+      border-radius: 10px; padding: 10px 14px;
+      box-shadow: 0 8px 28px rgba(0,0,0,0.13);
+      font-size: 13px; color: var(--ink); line-height: 1.5;
+      max-width: 260px; pointer-events: none;
+      animation: popIn 0.12s ease;
+    }
+    .slot-popover-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-faint); margin-bottom: 4px; }
+    @keyframes popIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
 
     /* Day note */
     .cal-day-note {
@@ -2002,6 +2016,7 @@
         input.placeholder = 'add plans…';
       }
       input.addEventListener('input', () => { if (!input.readOnly) saveNote(input); });
+      input.addEventListener('click', (e) => { if (input.readOnly && input.value.trim()) showSlotPopover(input, e); });
       txt.replaceWith(input);
     });
 
@@ -2142,18 +2157,50 @@
     document.querySelectorAll('.cal-slot-input, .cal-day-note, .cal-wf input').forEach(inp => {
       inp.readOnly = !editable;
     });
+    updateHasValueClasses();
   }
+
+  // ── Slot popover (click to read full text) ────────────
+  let _popover = null;
+  function updateHasValueClasses() {
+    document.querySelectorAll('.cal-slot-input').forEach(inp => {
+      inp.classList.toggle('has-value', inp.readOnly && inp.value.trim().length > 0);
+    });
+  }
+  function showSlotPopover(inp, e) {
+    if (!inp.readOnly || !inp.value.trim()) return;
+    dismissPopover();
+    const lbl = inp.closest('.cal-slot')?.querySelector('.cal-slot-lbl')?.textContent.trim() || '';
+    const pop = document.createElement('div');
+    pop.className = 'slot-popover';
+    pop.innerHTML = (lbl ? `<div class="slot-popover-label">${lbl}</div>` : '') +
+      `<div>${inp.value.trim()}</div>`;
+    document.body.appendChild(pop);
+    _popover = pop;
+    // Position near click, keeping within viewport
+    const x = Math.min(e.clientX + 10, window.innerWidth - 280);
+    const y = Math.min(e.clientY + 10, window.innerHeight - 120);
+    pop.style.left = x + 'px';
+    pop.style.top  = y + 'px';
+    e.stopPropagation();
+  }
+  function dismissPopover() {
+    if (_popover) { _popover.remove(); _popover = null; }
+  }
+  document.addEventListener('click', dismissPopover);
+  document.addEventListener('touchstart', dismissPopover);
 
   // ── Init ─────────────────────────────────────────────
   addDayLabels();
   initEditableSlots();
+  updateHasValueClasses();
   if (adminMode) {
     const btn = document.getElementById('adminBtn');
     btn.classList.add('on');
     btn.textContent = '🔓';
     setAllFieldsEditable(true);
   }
-  loadNotes();
+  loadNotes().then(() => updateHasValueClasses());
 </script>
 
 </body>
