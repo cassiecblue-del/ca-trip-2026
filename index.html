@@ -769,8 +769,8 @@
           <div class="cal-cell off">
             <div class="cal-date-bar"><span class="cal-date-num">9</span><span class="cal-badge">Day Off</span></div>
             <div class="cal-slots">
-              <div class="cal-slot"><span class="cal-slot-lbl">AM</span><span class="cal-slot-txt empty">—</span></div>
-              <div class="cal-slot"><span class="cal-slot-lbl">PM</span><span class="cal-slot-txt empty">—</span></div>
+              <div class="cal-slot"><span class="cal-slot-lbl">AM</span><span class="cal-slot-txt">830-9 meeting</span></div>
+              <div class="cal-slot"><span class="cal-slot-lbl">PM</span><span class="cal-slot-txt">🌟Huntington Gardens</span></div>
               <div class="cal-slot"><span class="cal-slot-lbl">Eve</span><span class="cal-slot-txt empty">—</span></div>
             </div>
           </div>
@@ -1860,6 +1860,7 @@
 
 <!-- ── ADMIN TOGGLE (Cassie only) ── -->
 <button class="admin-toggle" id="adminBtn" onclick="toggleAdmin()" title="Cassie's edit mode">🔒</button>
+<div id="bakePanel" style="display:none;position:fixed;bottom:70px;left:14px;width:320px;max-height:280px;overflow-y:auto;background:white;border:1px solid #e2e8f0;border-radius:12px;padding:14px;box-shadow:0 8px 24px rgba(0,0,0,0.12);z-index:999;font-family:system-ui,sans-serif"></div>
 
 <!-- ── MODAL ── -->
 <div class="modal-overlay" id="modalOverlay" onclick="closeModalOnBg(event)">
@@ -1927,7 +1928,6 @@
   function saveNote(el) {
     const key = el.dataset.key;
     clearTimeout(_noteTimers[key]);
-    // Visual feedback — briefly show saving state
     el.style.opacity = '0.6';
     _noteTimers[key] = setTimeout(async () => {
       const { error } = await db.from('notes').upsert({ key, value: el.value, updated_at: new Date().toISOString() });
@@ -1942,10 +1942,16 @@
   async function loadNotes() {
     const { data, error } = await db.from('notes').select('key, value');
     if (error) { console.error('Note load failed:', error); return; }
-    if (data) data.forEach(({ key, value }) => {
-      const el = document.querySelector('[data-key="' + key + '"]');
-      if (el) el.value = value;
-    });
+    if (!data) return;
+    // Apply all notes — run twice with a small delay to beat any async DOM changes
+    const applyNotes = () => {
+      data.forEach(({ key, value }) => {
+        const el = document.querySelector('[data-key="' + key + '"]');
+        if (el && el.style.display !== 'none') el.value = value;
+      });
+    };
+    applyNotes();
+    setTimeout(applyNotes, 300);
   }
   // Real-time: update notes on other visitors' screens
   db.channel('notes-sync').on('postgres_changes',
@@ -2175,6 +2181,24 @@
     document.querySelectorAll('.cal-slot-input, .cal-day-note, .cal-wf input').forEach(inp => {
       inp.readOnly = !editable;
     });
+    // Show/hide the bake panel
+    const panel = document.getElementById('bakePanel');
+    if (panel) panel.style.display = editable ? 'block' : 'none';
+    if (editable) refreshBakePanel();
+  }
+
+  async function refreshBakePanel() {
+    const panel = document.getElementById('bakePanel');
+    if (!panel) return;
+    const { data } = await db.from('notes').select('key, value').order('key');
+    if (!data || data.length === 0) { panel.innerHTML = '<div style="font-size:12px;color:#888;padding:8px">No saved notes yet.</div>'; return; }
+    panel.innerHTML = '<div style="font-size:11px;font-weight:700;letter-spacing:.05em;color:#888;margin-bottom:8px">SAVED NOTES (copy to bake into HTML)</div>' +
+      data.map(({key, value}) =>
+        `<div style="display:flex;gap:8px;align-items:center;margin-bottom:5px;font-size:12px">
+          <code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;color:#475569;flex-shrink:0">${key}</code>
+          <span style="color:#1e293b;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(value)}</span>
+        </div>`
+      ).join('');
   }
 
   // ── Suggestion helpers ────────────────────────────────
