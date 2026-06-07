@@ -560,7 +560,8 @@
     .pill-no  { background: rgba(232,137,92,0.10); color: var(--c-orange-deep); border: 1px solid rgba(232,137,92,0.22); }
     .pill-note { background: rgba(155,111,198,0.10); color: var(--c-purple-deep); border: 1px solid rgba(155,111,198,0.22); font-size: 11px; font-weight: 500; font-style: italic; }
     .brand-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
-    .brand-card { background: rgba(255,255,255,0.6); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px 14px; }
+    .brand-card { background: rgba(255,255,255,0.6); border: 2px solid transparent; border-radius: var(--radius-sm); padding: 12px 14px; transition: box-shadow .2s ease, border-color .2s ease; }
+    .brand-card.highlighted { border-color: var(--c-blue-deep); box-shadow: 0 0 0 3px rgba(46,140,190,0.15), 0 4px 16px rgba(46,140,190,0.12); }
     .brand-card-cat { font-size: 10px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 5px; }
     .brand-card-name { font-size: 14px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
     .brand-card-alt { font-size: 12px; color: var(--ink-soft); margin-bottom: 4px; }
@@ -569,6 +570,7 @@
     .brand-jump-nav { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
     .brand-jump { font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: var(--radius-pill); background: rgba(46,140,190,0.10); color: var(--c-blue-deep); border: 1px solid rgba(46,140,190,0.22); text-decoration: none; transition: all .15s ease; cursor: pointer; }
     .brand-jump:hover { background: rgba(46,140,190,0.20); }
+    .brand-jump.active { background: var(--c-blue-deep); color: white; border-color: var(--c-blue-deep); }
     .brand-link { color: var(--c-blue-deep); text-decoration: none; font-weight: 700; }
     .brand-link:hover { text-decoration: underline; }
     .milk-rank { display: flex; flex-direction: column; gap: 8px; }
@@ -1685,14 +1687,14 @@
     <div class="prefs-block">
       <div class="prefs-block-title">🛒 The Best Vegan / GF Swaps (Cassie-approved brands)</div>
       <div class="brand-jump-nav">
-        <a class="brand-jump" onclick="document.getElementById('brand-bread').scrollIntoView({behavior:'smooth',block:'start'})">Bread</a>
-        <a class="brand-jump" onclick="document.getElementById('brand-pasta').scrollIntoView({behavior:'smooth',block:'start'})">Pasta</a>
-        <a class="brand-jump" onclick="document.getElementById('brand-flour').scrollIntoView({behavior:'smooth',block:'start'})">Flour</a>
-        <a class="brand-jump" onclick="document.getElementById('brand-butter').scrollIntoView({behavior:'smooth',block:'start'})">Butter</a>
-        <a class="brand-jump" onclick="document.getElementById('brand-cheese').scrollIntoView({behavior:'smooth',block:'start'})">Cheese</a>
-        <a class="brand-jump" onclick="document.getElementById('brand-mayo').scrollIntoView({behavior:'smooth',block:'start'})">Mayo</a>
-        <a class="brand-jump" onclick="document.getElementById('brand-meat').scrollIntoView({behavior:'smooth',block:'start'})">Fake Meat</a>
-        <a class="brand-jump" onclick="document.getElementById('brand-treats').scrollIntoView({behavior:'smooth',block:'start'})">Treats</a>
+        <a class="brand-jump" onclick="highlightBrand('brand-bread',this)">Bread</a>
+        <a class="brand-jump" onclick="highlightBrand('brand-pasta',this)">Pasta</a>
+        <a class="brand-jump" onclick="highlightBrand('brand-flour',this)">Flour</a>
+        <a class="brand-jump" onclick="highlightBrand('brand-butter',this)">Butter</a>
+        <a class="brand-jump" onclick="highlightBrand('brand-cheese',this)">Cheese</a>
+        <a class="brand-jump" onclick="highlightBrand('brand-mayo',this)">Mayo</a>
+        <a class="brand-jump" onclick="highlightBrand('brand-meat',this)">Fake Meat</a>
+        <a class="brand-jump" onclick="highlightBrand('brand-treats',this)">Treats</a>
       </div>
       <div class="brand-grid">
 
@@ -2189,6 +2191,22 @@
   }
   document.addEventListener('click', dismissPopover);
   document.addEventListener('touchstart', dismissPopover);
+
+  // ── Brand card highlight ──────────────────────────────
+  function highlightBrand(id, btn) {
+    // Clear previous state
+    document.querySelectorAll('.brand-card').forEach(c => c.classList.remove('highlighted'));
+    document.querySelectorAll('.brand-jump').forEach(b => b.classList.remove('active'));
+    // Highlight card and pill
+    const card = document.getElementById(id);
+    if (!card) return;
+    card.classList.add('highlighted');
+    btn.classList.add('active');
+    // Scroll into view only if card isn't already fully visible
+    const rect = card.getBoundingClientRect();
+    const inView = rect.top >= 80 && rect.bottom <= window.innerHeight - 20;
+    if (!inView) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
 
   // ── Init ─────────────────────────────────────────────
   addDayLabels();
