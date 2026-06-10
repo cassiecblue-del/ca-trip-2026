@@ -593,6 +593,7 @@
       .brand-grid { grid-template-columns: 1fr; }
     }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 </head>
 <body>
 
@@ -1873,7 +1874,7 @@
     <div class="form-group"><label>What do you have in mind?</label><textarea id="suggestActivity" placeholder="Describe the activity, links, any details…"></textarea></div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal()">Cancel</button>
-      <button class="btn-suggest" onclick="sendSuggestion()">Send via email ✉️</button>
+      <button class="btn-suggest" onclick="sendSuggestion()">Send Suggestion ✨</button>
     </div>
   </div>
 </div>
@@ -1953,27 +1954,38 @@
   function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); }
   function closeModalOnBg(e) { if (e.target === document.getElementById('modalOverlay')) closeModal(); }
 
-  // ── Suggestions — email only ──────────────────────────
-  function sendSuggestion() {
+  // ── EmailJS init ──────────────────────────────────────
+  emailjs.init('qXYyUQXwwNqsSuuws');
+
+  // ── Suggestions — silent EmailJS send ────────────────
+  async function sendSuggestion() {
     const name     = document.getElementById('suggestName').value.trim();
     const date     = document.getElementById('suggestDate').value;
     const time     = document.getElementById('suggestTime').value;
     const activity = document.getElementById('suggestActivity').value.trim();
     if (!name || !date || !time || !activity) { alert('Please fill in all fields!'); return; }
 
-    const subj = encodeURIComponent('CA Trip idea from ' + name + '!');
-    const body = encodeURIComponent(
-      'Hey Cassie! ' + name + ' has a suggestion for your California trip:\n\n' +
-      '📅 Date: ' + date + '\n' +
-      '🕐 Time: ' + time + '\n' +
-      '✨ What: ' + activity + '\n\n' +
-      'Log in to add it: https://cassiecblue-del.github.io/ca-trip-2026/'
-    );
-    window.location.href = 'mailto:cassiecblue@gmail.com?subject=' + subj + '&body=' + body;
+    const btn = document.querySelector('.btn-suggest');
+    btn.textContent = 'Sending…';
+    btn.disabled = true;
 
-    ['suggestName','suggestDate','suggestTime','suggestActivity'].forEach(id => document.getElementById(id).value = '');
-    closeModal();
-    alert('Thanks ' + name + '! Your suggestion has been sent to Cassie 🎉');
+    try {
+      await emailjs.send('service_cr4sh0k', 'template_qwj845d', {
+        from_name: name,
+        date,
+        time,
+        activity
+      });
+      ['suggestName','suggestDate','suggestTime','suggestActivity'].forEach(id => document.getElementById(id).value = '');
+      closeModal();
+      alert('Thanks ' + name + '! Your suggestion has been sent to Cassie 🎉');
+    } catch(err) {
+      console.error('EmailJS error:', err);
+      alert('Something went wrong — please try again!');
+    } finally {
+      btn.textContent = 'Send Suggestion ✨';
+      btn.disabled = false;
+    }
   }
 
   // ── Day-of-week labels ────────────────────────────────
@@ -2206,6 +2218,17 @@
     const rect = card.getBoundingClientRect();
     const inView = rect.top >= 80 && rect.bottom <= window.innerHeight - 20;
     if (!inView) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  // ── Rotating name placeholder ─────────────────────────
+  const _nameExamples = ['Rusty','Cindy','Scott','Claire','Bryan','Ziv','Mish Mish','Moose'];
+  const _nameInput = document.getElementById('suggestName');
+  if (_nameInput) {
+    const _randomName = () => _nameExamples[Math.floor(Math.random() * _nameExamples.length)];
+    _nameInput.placeholder = 'e.g. ' + _randomName();
+    _nameInput.addEventListener('focus', () => {
+      _nameInput.placeholder = 'e.g. ' + _randomName();
+    });
   }
 
   // ── Init ─────────────────────────────────────────────
